@@ -1,4 +1,4 @@
-FROM ghcr.io/mgoltzsche/mopidy:0.12.0
+FROM ghcr.io/mgoltzsche/mopidy:0.13.0
 
 # Install bats
 USER root:root
@@ -8,8 +8,6 @@ RUN set -eux; \
 	/tmp/bats-core-$BATS_VERSION/install.sh /opt/bats; \
 	ln -s /opt/bats/bin/bats /usr/local/bin/bats; \
 	rm -rf /tmp/bats-core-$BATS_VERSION
-
-COPY mopidy.conf /etc/mopidy/mopidy.conf
 
 # Install mopidy-webm3u extension from source
 COPY dist /extension/dist
