@@ -20,7 +20,7 @@ Install by running::
 Configuration
 =============
 
-Before starting Mopidy, you must configure the URL to the M3U playlist of playlists and disable Mopidy's built-in m3u extension::
+Before starting Mopidy, you must configure it as follows, enabling the webm3u extension and specifying the URL to the M3U playlist of playlists::
 
     [m3u]
     enabled = false
