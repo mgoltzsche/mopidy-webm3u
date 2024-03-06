@@ -40,3 +40,16 @@ The playlist of playlists URL specified by the ``seed_m3u`` option is expected t
     #EXTINF:0,Playlist 2
     http://localhost:8337/playlists/playlist2.m3u8
 
+
+Development
+===========
+
+First make sure an example M3U playlist of playlists is served at ``http://localhost:8337/m3u/playlists/index.m3u8``, e.g. by running the `beets-webm3u development server <https://github.com/mgoltzsche/beets-container?tab=readme-ov-file#run-the-beets-web-server>`_.
+
+Then you can run a mopidy container with the extension installed (including your local changes) as follows (requires `docker <https://docs.docker.com/engine/install/>`_)::
+
+    make run
+
+
+Once Mopidy started, you can browse the playlists within the Iris UI at `http://localhost:6680/iris/library/playlists <http://localhost:6680/iris/library/playlists>`_.
+
