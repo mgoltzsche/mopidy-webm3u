@@ -46,7 +46,7 @@ run: mopidy-container
 		--mount "type=bind,src=$$HOME/.config/pulse,dst=/var/lib/mopidy/.config/pulse" \
 		-e HOME=/var/lib/mopidy \
 		-e MOPIDY_WEBM3U_ENABLED=true \
-		-e MOPIDY_WEBM3U_SEED_M3U='http://localhost:8337/m3u/playlists/index.m3u8?uri-format=subidy:song:3$$id' \
+		-e MOPIDY_WEBM3U_SEED_M3U='http://localhost:8337/m3u/playlists/index.m3u?uri-format=subidy:song:3$$id' \
 		-e MOPIDY_SUBIDY_ENABLED=true \
 		-e MOPIDY_SUBIDY_URL=http://localhost:8337/subsonic \
 		-e MOPIDY_OPTS= \
