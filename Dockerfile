@@ -1,4 +1,4 @@
-FROM ghcr.io/mgoltzsche/mopidy:0.13.1
+FROM ghcr.io/mgoltzsche/mopidy:0.14.1
 
 # Install bats
 USER root:root

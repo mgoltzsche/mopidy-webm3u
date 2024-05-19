@@ -1,6 +1,9 @@
 import pykka
+import hashlib
 import logging
 import typing
+from pathlib import Path
+from urllib.parse import urlparse
 from mopidy import backend, models
 from .m3u import parse_playlist
 from .types import WebM3UConfig
@@ -16,19 +19,19 @@ class WebM3UBackend(pykka.ThreadingActor, backend.Backend):
         self.uri_schemes = [uri_scheme]
         self.playlists = WebM3UPlaylistsProvider(self, ext_config['seed_m3u'], uri_scheme)
 
-# TODO: Protected URI against server-side request forgery - by enforcing hostname and path prefix for playlist URLs?!
-
 class WebM3UPlaylistsProvider(backend.PlaylistsProvider):
     def __init__(self, backend, seed_m3u_url, uri_scheme):
         super().__init__(backend)
         self._seed_m3u_url = seed_m3u_url
         self._uri_scheme = uri_scheme
-        self._playlist_refs = []
+        self._playlist_refs = {}
         self.refresh()
 
     def as_list(self):
         logger.debug('Listing playlists')
-        return self._playlist_refs
+        l = [p.ref for p in self._playlist_refs.values()]
+        l.sort(key=lambda p: (p.name, p.uri))
+        return l
 
     def get_items(self, uri):
         logger.debug('Getting playlist ltems')
@@ -37,22 +40,22 @@ class WebM3UPlaylistsProvider(backend.PlaylistsProvider):
 
     def lookup(self, uri):
         logger.debug(f"Looking up playlist {uri}")
-        pl = self._uri2playlistref(uri)
+        pl = self._uri2playlistref(uri).ref
         url = self._uri2url(uri)
         tracks = [_item2track(item) for item in parse_playlist(url)]
         return models.Playlist(uri=uri, name=pl.name, tracks=tracks)
 
     def _uri2playlistref(self, uri):
-        for pl in self._playlist_refs:
-            if pl.uri == uri:
-                return pl
-        raise Exception(f"playlist {uri} not found")
+        p = self._playlist_refs.get(uri)
+        if not p:
+            raise Exception(f"playlist {uri} not found")
+        return p
 
     def refresh(self):
         logger.info(f"Loading M3U playlists from {self._seed_m3u_url}...")
         playlists = [self._playlistref(pl) for pl in parse_playlist(self._seed_m3u_url)]
         logger.info(f"Loaded {len(playlists)} M3U playlists from server")
-        self._playlist_refs = playlists
+        self._playlist_refs = {p.uri: p for p in playlists}
 
     def create(self, name):
         logger.warning('Playlist creation is not supported by this provider')
@@ -65,12 +68,15 @@ class WebM3UPlaylistsProvider(backend.PlaylistsProvider):
         logger.warning('Playlist manipulation is not supported by this provider')
 
     def _uri2url(self, uri):
-        assert uri.startswith(f"{self._uri_scheme}:"), 'unsupported URI format provided'
-        return uri[len(self._uri_scheme)+1:]
+        assert uri.startswith(f"{self._uri_scheme}:playlist:"), 'unsupported URI format provided'
+        return self._uri2playlistref(uri).url
 
     def _playlistref(self, item):
-        uri = f"{self._uri_scheme}:{item.uri}"
-        return models.Ref(uri=uri, name=item.title, type=models.Ref.PLAYLIST)
+        filename = Path(urlparse(item.uri).path).stem
+        urlhash = hashlib.sha256(item.uri.encode('utf-8')).hexdigest()[:7]
+        id = f"{filename}-{urlhash}".strip('-.')
+        uri = f"{self._uri_scheme}:playlist:{id}"
+        return PlaylistRef(uri, item.uri, item.title)
 
 def _item2track(item):
     return models.Track(
@@ -79,3 +85,9 @@ def _item2track(item):
         genre=item.attrs.get('genre'),
         length=item.duration*1000,
     )
+
+class PlaylistRef:
+    def __init__(self, uri, url, name):
+        self.uri = uri
+        self.url = url
+        self.ref = models.Ref(uri=uri, name=name, type=models.Ref.PLAYLIST)
