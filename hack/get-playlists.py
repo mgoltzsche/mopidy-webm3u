@@ -6,13 +6,11 @@ import json
 # Mopidy server URL
 mopidy_url = 'http://localhost:6680/mopidy/rpc'
 
-# JSON-RPC method to get playlists
-method = 'core.playlists.get_playlists'
+# First, get the list of playlists
+method = 'core.playlists.as_list'
+params = {}
 
-# JSON-RPC params
-params = {'uri_scheme': 'm3u'}
-
-# JSON-RPC request
+# JSON-RPC request for playlist list
 payload = {
     'jsonrpc': '2.0',
     'id': 1,
@@ -29,15 +27,47 @@ if response.status_code == 200:
     result = response.json()
 
     # Extract playlists from the result
-    print(result)
+    print("Retrieved playlists:")
     playlists = result.get('result', [])
-
-    # Print information about each playlist
-    for playlist in playlists:
-        print(f"Playlist Name: {playlist['name']}")
-        print("Tracks:")
-        for track in playlist['tracks']:
-            print(f"  - {track['uri']}")
-        print("\n")
+    
+    if not playlists:
+        print("No playlists found.")
+    else:
+        # For each playlist, get full details including tracks
+        for i, playlist_ref in enumerate(playlists):
+            print(f"\nPlaylist {i+1}:")
+            print(f"Name: {playlist_ref.get('name', 'Unknown')}")
+            print(f"URI: {playlist_ref.get('uri', 'Unknown')}")
+            
+            # Get full playlist details including tracks
+            # We need to make another API call for this
+            lookup_method = 'core.playlists.lookup'
+            lookup_params = {'uri': playlist_ref.get('uri', '')}
+            
+            lookup_payload = {
+                'jsonrpc': '2.0',
+                'id': 2,
+                'method': lookup_method,
+                'params': lookup_params,
+            }
+            
+            try:
+                lookup_response = requests.post(mopidy_url, json=lookup_payload)
+                if lookup_response.status_code == 200:
+                    lookup_result = lookup_response.json()
+                    full_playlist = lookup_result.get('result', {})
+                    
+                    if full_playlist:
+                        print(f"Tracks: {len(full_playlist.get('tracks', []))}")
+                        for j, track in enumerate(full_playlist.get('tracks', [])):
+                            print(f"  Track {j+1}: {track.get('name', 'Unknown')} - {track.get('uri', 'Unknown')}")
+                    else:
+                        print("No track information available for this playlist")
+                else:
+                    print(f"Error retrieving playlist details: {lookup_response.status_code}")
+            except Exception as e:
+                print(f"Error making lookup call: {e}")
+                
+    print("\nDone.")
 else:
-    print(f"Error: {response.status_code}, {response.text}")
+    print(f"Error retrieving playlists: {response.status_code}, {response.text}")
